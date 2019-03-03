@@ -1,3 +1,5 @@
+package actions;
+
 import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.editor.Caret;
 import com.intellij.openapi.editor.CaretModel;
