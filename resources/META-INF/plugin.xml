@@ -1,7 +1,7 @@
 <idea-plugin url="https://github.com/yiyingcanfeng/maven-dependency-helper">
     <id>com.yiycf.plugins.mavenDependencyHelper</id>
     <name>Maven Dependency Helper</name>
-    <version>1.0</version>
+    <version>1.1</version>
     <vendor email="yiyingcanfeng@qq.com">yiyingcanfeng</vendor>
 
     <description><![CDATA[
@@ -44,7 +44,7 @@
 
     <actions>
 
-        <action id="MavenDependencyHelperAction" class="MavenDependencyHelperAction" text="MavenDependencyHelper"
+        <action id="actions.MavenDependencyHelperAction" class="actions.MavenDependencyHelperAction" text="MavenDependencyHelper"
                 description="MavenDependencyHelper">
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
             <keyboard-shortcut keymap="$default" first-keystroke="control shift D"/>
