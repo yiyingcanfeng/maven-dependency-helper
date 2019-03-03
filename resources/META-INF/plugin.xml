@@ -23,6 +23,8 @@
             <li>
                 Support for copying version information or complete dependency information directly to the clipboard
             </li>
+            <img src="https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show1.gif?raw=true" alt="">
+            <img src="https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show2.gif?raw=true" alt="">
         </ul>
         ]]></description>
 
