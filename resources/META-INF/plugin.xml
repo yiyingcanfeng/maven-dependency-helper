@@ -1,0 +1,53 @@
+<idea-plugin url="https://github.com/yiyingcanfeng/maven-dependency-helper">
+    <id>com.yiycf.plugins.mavenDependencyHelper</id>
+    <name>Maven Dependency Helper</name>
+    <version>1.0</version>
+    <vendor email="yiyingcanfeng@qq.com">yiyingcanfeng</vendor>
+
+    <description><![CDATA[
+        <h1>Search dependency without open the browser</h1>
+        <a href="https://github.com/yiyingcanfeng/maven-dependency-helper">GitHub</a> |
+        <a href="https://github.com/yiyingcanfeng/maven-dependency-helper/issues">Issues</a>
+        <h2>Features:</h2>
+        <ul>
+            <li>
+                Select an artifactId in pom.xml, right click on the shortcut menu or press the shortcut button Ctrl+Shift+D to open
+                the window, then query all release versions of the dependency online from <a
+                    href="https://mvnrepository.com">mvnrepository.com</a> and show
+            </li>
+            <li>
+                Open the window, type the dependency you want to find directly in the search bar, click Search or press
+                Enter directly. The most similar result will appear in the drop-down menu, then select the version you
+                want.
+            </li>
+            <li>
+                Support for copying version information or complete dependency information directly to the clipboard
+            </li>
+        </ul>
+        ]]></description>
+
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
+    <idea-version since-build="173.0"/>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <!-- uncomment to enable plugin in all products
+    <depends>com.intellij.modules.lang</depends>
+    -->
+
+    <extensions defaultExtensionNs="com.intellij">
+
+    </extensions>
+
+    <actions>
+
+        <action id="MavenDependencyHelperAction" class="MavenDependencyHelperAction" text="MavenDependencyHelper"
+                description="MavenDependencyHelper">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="control shift D"/>
+        </action>
+
+    </actions>
+
+</idea-plugin>
