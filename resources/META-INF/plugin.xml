@@ -11,7 +11,8 @@
         <h2>Features:</h2>
         <ul>
             <li>
-                Select an artifactId in pom.xml, right click on the shortcut menu or press the shortcut button Ctrl+Shift+D to open
+                Select an artifactId in pom.xml, right click on the shortcut menu or press the shortcut button
+                Ctrl+Shift+D to open
                 the window, then query all release versions of the dependency online from <a
                     href="https://mvnrepository.com">mvnrepository.com</a> and show
             </li>
@@ -26,8 +27,16 @@
             <img src="https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show1.gif?raw=true" alt="">
             <img src="https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show2.gif?raw=true" alt="">
         </ul>
-        ]]></description>
-
+        ]]>
+    </description>
+    <change-notes><![CDATA[
+        <p>
+            1.1
+        <ul>
+            <li>Fix bug that not working on Android Studio</li>
+        </p>
+        ]]>
+    </change-notes>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
     <idea-version since-build="173.0"/>
@@ -44,7 +53,8 @@
 
     <actions>
 
-        <action id="actions.MavenDependencyHelperAction" class="actions.MavenDependencyHelperAction" text="MavenDependencyHelper"
+        <action id="actions.MavenDependencyHelperAction" class="actions.MavenDependencyHelperAction"
+                text="MavenDependencyHelper"
                 description="MavenDependencyHelper">
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
             <keyboard-shortcut keymap="$default" first-keystroke="control shift D"/>
