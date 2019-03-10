@@ -1,7 +1,7 @@
 <idea-plugin url="https://github.com/yiyingcanfeng/maven-dependency-helper">
     <id>com.yiycf.plugins.mavenDependencyHelper</id>
     <name>Maven Dependency Helper</name>
-    <version>1.1</version>
+    <version>1.2</version>
     <vendor email="yiyingcanfeng@qq.com">yiyingcanfeng</vendor>
 
     <description><![CDATA[
@@ -30,11 +30,16 @@
         ]]>
     </description>
     <change-notes><![CDATA[
-        <p>
-            1.1
         <ul>
-            <li>Fix bug that not working on Android Studio</li>
-        </p>
+            <li>
+                <p>1.1</p>
+                Fix bug that not working on Android Studio
+            </li>
+            <li>
+                <p>1.2</p>
+                Fix NullPointerException that occurs in some cases
+            </li>
+        </ul>
         ]]>
     </change-notes>
 
@@ -44,8 +49,8 @@
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
     <!-- uncomment to enable plugin in all products
-    <depends>com.intellij.modules.lang</depends>
     -->
+    <depends>com.intellij.modules.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
 

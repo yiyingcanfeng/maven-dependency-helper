@@ -270,7 +270,7 @@ public class MavenDependencyHelperAction extends AnAction {
                     Element element = (Element) it.next();
                     String groupId = element.element("groupId").getText();
                     String artifactId = element.element("artifactId").getText();
-                    String version = element.element("version").getText();
+                    String version = element.element("version") == null ? "" : element.element("version").getText();
                     String scope = element.element("scope") == null ? "" : element.element("scope").getText();
                     dependency.setGroupId(groupId);
                     dependency.setArtifactId(artifactId);
