@@ -43,6 +43,7 @@ public class MavenDependencyHelperAction extends AnAction {
     private JButton copyTextAeraButton;
     private JButton searchButton;
     private JComboBox<String> comboBox;
+    private JComboBox<String> typeComboBox;
     private JLabel titleLabel;
     private JTextField textField;
     private JBScrollPane scrollPane;
@@ -53,6 +54,7 @@ public class MavenDependencyHelperAction extends AnAction {
     private String selectedText;
     private String groupId;
     private String artifactId;
+    private String version;
     private String scope;
 
     private ThreadPoolExecutor threadPool;
@@ -70,9 +72,11 @@ public class MavenDependencyHelperAction extends AnAction {
         Caret currentCaret = caretModel.getCurrentCaret();
         selectedText = currentCaret.getSelectedText() != null ? currentCaret.getSelectedText() : "";
         dependencies = getDependencies(classPath);
+        //初始化线程池
         ThreadFactory threadFactory = Executors.defaultThreadFactory();
         threadPool = new ThreadPoolExecutor(3, 5, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(2), threadFactory);
         if (!"".equals(selectedText)) {
+            //从List<Dependency>中搜索选中的Dependency，并获取其详细信息
             List<Dependency> list = dependencies.stream().filter(item -> item.getArtifactId().equals(selectedText)).collect(Collectors.toList());
             if (list.size() > 0) {
                 Dependency dependency = list.get(0);
@@ -97,6 +101,9 @@ public class MavenDependencyHelperAction extends AnAction {
 
     }
 
+    /**
+     * 获取versions并展示
+     */
     private void getVersionsAndShow() {
         copyVersionButton.setText("loading...");
         threadPool.execute(() -> {
@@ -116,12 +123,21 @@ public class MavenDependencyHelperAction extends AnAction {
         });
     }
 
+    /**
+     * 获取release类型的依赖信息
+     * @return Elements
+     * @throws IOException IOException
+     */
     private Elements getReleaseVersionElements() throws IOException {
         String url = String.format("https://mvnrepository.com/artifact/%s/%s", groupId, artifactId);
         org.jsoup.nodes.Document doc = Jsoup.connect(url).get();
         return doc.getElementsByClass("vbtn release");
     }
 
+    /**
+     * 向ListModel中添加version信息
+     * @param elementsByClass Elements
+     */
     private void addToVersionListModel(Elements elementsByClass) {
         for (org.jsoup.nodes.Element byClass : elementsByClass) {
             String href = byClass.attr("href");
@@ -130,6 +146,9 @@ public class MavenDependencyHelperAction extends AnAction {
         }
     }
 
+    /**
+     * 初始化界面
+     */
     private void initView() {
         frame = new JFrame("Maven Dependency Helper");
         frame.setSize(525, 250);
@@ -148,6 +167,11 @@ public class MavenDependencyHelperAction extends AnAction {
         comboBox = new ComboBox<>();
         comboBox.setFont(new Font(null, Font.PLAIN, 15));
         comboBox.addItem(artifactId);
+
+        typeComboBox = new ComboBox<>();
+        typeComboBox.setFont(new Font(null, Font.PLAIN, 15));
+        typeComboBox.addItem("Maven");
+        typeComboBox.addItem("Gradle");
 
         textArea = new JTextArea();
         textArea.setColumns(10);
@@ -170,9 +194,11 @@ public class MavenDependencyHelperAction extends AnAction {
 
         versionJList.addMouseListener(versionJListMouseAdapter);
 
+        //设置组件的位置和大小
         setLocationAndSize();
 
-        addToComtainer();
+        //将组件添加到Container中
+        addToContainer();
 
         searchButton.addMouseListener(new MouseAdapter() {
             @Override
@@ -190,31 +216,42 @@ public class MavenDependencyHelperAction extends AnAction {
                 }
             }
         });
-        comboBox.addItemListener(this::comboBoxItemStateChanged);
+        comboBox.addItemListener(this::comboBoxItemSelectEvent);
     }
 
+    /**
+     * 设置组件的位置和大小
+     */
     private void setLocationAndSize() {
-        comboBox.setBounds(20, 10, 110, 25);
-        copyVersionButton.setBounds(20, 40, 110, 25);
-        copyTextAeraButton.setBounds(190, 40, 110, 25);
-        searchButton.setBounds(400, 40, 90, 25);
-        listScroller.setBounds(20, 72, 110, 122);
-        textField.setBounds(190, 10, 300, 25);
-        scrollPane.setBounds(190, 72, 300, 122);
+        comboBox.setBounds(20, 10, 110, 30);
+        textField.setBounds(190, 10, 300, 30);
+        typeComboBox.setBounds(310, 45, 80, 25);
+        copyVersionButton.setBounds(20, 45, 110, 25);
+        copyTextAeraButton.setBounds(190, 45, 110, 25);
+        searchButton.setBounds(400, 45, 90, 25);
+        listScroller.setBounds(20, 77, 110, 122);
+        scrollPane.setBounds(190, 77, 300, 122);
     }
 
-    private void addToComtainer() {
+    /**
+     * 将组件添加到Container中
+     */
+    private void addToContainer() {
         frame.getContentPane().setLayout(null);
         frame.getContentPane().add(copyVersionButton);
         frame.getContentPane().add(copyTextAeraButton);
         frame.getContentPane().add(searchButton);
         frame.getContentPane().add(comboBox);
+        frame.getContentPane().add(typeComboBox);
         frame.getContentPane().add(textField);
         frame.getContentPane().add(scrollPane);
         frame.getContentPane().add(listScroller);
         frame.setVisible(true);
     }
 
+    /**
+     * 搜索依赖
+     */
     private void search() {
         String text = textField.getText();
         searchButton.setText("Searching...");
@@ -256,6 +293,11 @@ public class MavenDependencyHelperAction extends AnAction {
         });
     }
 
+    /**
+     * 读取并解析pom.xml，获取Dependency信息
+     * @param fileName 文件名
+     * @return List<Dependency>
+     */
     private List<Dependency> getDependencies(String fileName) {
         List<Dependency> d = new ArrayList<>();
         File file = new File(fileName);
@@ -286,15 +328,20 @@ public class MavenDependencyHelperAction extends AnAction {
         return d;
     }
 
-    private void comboBoxItemStateChanged(ItemEvent event) {
+    /**
+     * 选择依赖comboBox Item选中事件
+     * @param event event
+     */
+    private void comboBoxItemSelectEvent(ItemEvent event) {
         if (event.getStateChange() == ItemEvent.SELECTED) {
-            String[] split = event.getItem().toString().split("/");
-            groupId = split[0];
-            artifactId = split[1];
+            String[] itemStringSplit = event.getItem().toString().split("/");
+            groupId = itemStringSplit[0];
+            artifactId = itemStringSplit[1];
             copyVersionButton.setText("Loading...");
             threadPool.execute(() -> {
                 try {
                     Elements elementsByClass = getReleaseVersionElements();
+                    //根据第一个依赖信息，在mvnrepository网站该依赖的详情页面查询该依赖是否有scope属性，比如javaee-api有provided属性，junit有test属性，如果没有，则后面生成的dependencyText就不带scope属性
                     String firstVersion = elementsByClass.get(0).attr("href").split("/")[1];
                     String url1 = String.format("https://mvnrepository.com/artifact/%s/%s/%s", groupId, artifactId, firstVersion);
                     org.jsoup.nodes.Document doc2 = Jsoup.connect(url1).get();
@@ -323,28 +370,51 @@ public class MavenDependencyHelperAction extends AnAction {
         }
     }
 
+    /**
+     * JList点击事件
+     */
     private MouseAdapter versionJListMouseAdapter = new MouseAdapter() {
         @Override
         public void mouseClicked(MouseEvent e) {
             JList jList = (JList) e.getSource();
-            String version = jList.getSelectedValue().toString();
+            //JList为空时，点击其空白区域仍会触发点击事件
+            Object selectedValue = jList.getSelectedValue();
+            version = selectedValue == null ? "" : selectedValue.toString();
             String dependencyText;
-            if (!"".equals(scope)) {
-                dependencyText = "<dependency>\n" +
-                        "    <groupId>" + groupId + "</groupId>\n" +
-                        "    <artifactId>" + artifactId + "</artifactId>\n" +
-                        "    <version>" + version + "</version>\n" +
-                        "    <scope>" + scope + "</scope>\n" +
-                        "</dependency>";
-            } else {
-                dependencyText = "<dependency>\n" +
-                        "    <groupId>" + groupId + "</groupId>\n" +
-                        "    <artifactId>" + artifactId + "</artifactId>\n" +
-                        "    <version>" + version + "</version>\n" +
-                        "</dependency>";
+            String type = typeComboBox.getSelectedItem().toString();
+            switch (type) {
+                case "Maven":
+                    if ("".equals(scope)) {
+                        dependencyText = "<dependency>\n" +
+                                "    <groupId>" + groupId + "</groupId>\n" +
+                                "    <artifactId>" + artifactId + "</artifactId>\n" +
+                                "    <version>" + version + "</version>\n" +
+                                "</dependency>";
+                    } else {
+                        dependencyText = "<dependency>\n" +
+                                "    <groupId>" + groupId + "</groupId>\n" +
+                                "    <artifactId>" + artifactId + "</artifactId>\n" +
+                                "    <version>" + version + "</version>\n" +
+                                "    <scope>" + scope + "</scope>\n" +
+                                "</dependency>";
+                    }
+
+                    break;
+                case "Gradle":
+                    dependencyText = dependencyTextForGradle();
+                    break;
+                default:
+                    dependencyText = "<dependency>\n" +
+                            "    <groupId>" + groupId + "</groupId>\n" +
+                            "    <artifactId>" + artifactId + "</artifactId>\n" +
+                            "    <version>" + version + "</version>\n" +
+                            "</dependency>";
+                    break;
             }
 
+
             textArea.setText(dependencyText);
+            //copyVersion按钮点击事件
             copyVersionButton.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
@@ -362,11 +432,11 @@ public class MavenDependencyHelperAction extends AnAction {
                     }, 1000, TimeUnit.MILLISECONDS);
                 }
             });
-
+            //copyText按钮点击事件
             copyTextAeraButton.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    StringSelection stringSelection = new StringSelection(dependencyText);
+                    StringSelection stringSelection = new StringSelection(textArea.getText());
                     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
                     clipboard.setContents(stringSelection, null);
                     ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
@@ -380,7 +450,60 @@ public class MavenDependencyHelperAction extends AnAction {
                     }, 1000, TimeUnit.MILLISECONDS);
                 }
             });
+            //依赖类型ComboBox Item事件
+            typeComboBox.addItemListener(this::typeComboBoxItemSelectEvent);
 
         }
+
+        /**
+         * 依赖类型ComboBox Item选中事件
+         * @param event event
+         */
+        private void typeComboBoxItemSelectEvent(ItemEvent event) {
+            if (event.getStateChange() == ItemEvent.SELECTED) {
+                String itemString = event.getItem().toString();
+                String dependencyText;
+                if ("Maven".equals(itemString)) {
+                    if ("".equals(scope)) {
+                        dependencyText = "<dependency>\n" +
+                                "    <groupId>" + groupId + "</groupId>\n" +
+                                "    <artifactId>" + artifactId + "</artifactId>\n" +
+                                "    <version>" + version + "</version>\n" +
+                                "</dependency>";
+                    } else {
+                        dependencyText = "<dependency>\n" +
+                                "    <groupId>" + groupId + "</groupId>\n" +
+                                "    <artifactId>" + artifactId + "</artifactId>\n" +
+                                "    <version>" + version + "</version>\n" +
+                                "    <scope>" + scope + "</scope>\n" +
+                                "</dependency>";
+                    }
+
+                } else if ("Gradle".equals(itemString)) {
+                        dependencyText = dependencyTextForGradle();
+                } else {
+                    dependencyText = "";
+                }
+
+                textArea.setText(dependencyText);
+            }
+        }
     };
+
+    //生成gradle的依赖文本
+    private String dependencyTextForGradle() {
+        String dependencyText;
+        switch (scope) {
+            case "test":
+                dependencyText = String.format("testCompile group: '%s', name: '%s', version: '%s'", groupId, artifactId, version);
+                break;
+            case "provided":
+                dependencyText = String.format("provided group: '%s', name: '%s', version: '%s'", groupId, artifactId, version);
+                break;
+            default:
+                dependencyText = String.format("compile group: '%s', name: '%s', version: '%s'", groupId, artifactId, version);
+                break;
+        }
+        return dependencyText;
+    }
 }
