@@ -1,7 +1,7 @@
 <idea-plugin url="https://github.com/yiyingcanfeng/maven-dependency-helper">
     <id>com.yiycf.plugins.mavenDependencyHelper</id>
     <name>Maven Dependency Helper</name>
-    <version>1.3</version>
+    <version>1.4</version>
     <vendor email="yiyingcanfeng@qq.com">yiyingcanfeng</vendor>
 
     <description><![CDATA[
@@ -43,6 +43,10 @@
             <li>
                 <p>1.3</p>
                 Support for generating gradle dependency
+            </li>
+            <li>
+                <p>1.4</p>
+                Now the window can be closed when the ESC key is pressed
             </li>
         </ul>
         ]]>

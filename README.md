@@ -16,4 +16,4 @@ Ctrl+Shift+D
 
 支持生成gradle依赖文本
 
-![show2.gif](https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show3.gif?raw=true)
+![show3.gif](https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show3.gif?raw=true)

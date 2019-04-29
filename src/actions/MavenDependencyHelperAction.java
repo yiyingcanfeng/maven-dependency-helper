@@ -61,21 +61,19 @@ public class MavenDependencyHelperAction extends AnAction {
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
-        //获取当前在操作的工程上下文
-        Project project = e.getData(PlatformDataKeys.PROJECT);
         //获取当前操作的类文件
         PsiFile psiFile = e.getData(CommonDataKeys.PSI_FILE);
-        //获取当前类文件的路径
-        String classPath = psiFile.getVirtualFile().getPath();
+        //获取当前文件的路径
+        String filePath = psiFile != null ? psiFile.getVirtualFile().getPath() : "";
         //获取选中的文本
         CaretModel caretModel = Objects.requireNonNull(e.getData(LangDataKeys.EDITOR)).getCaretModel();
         Caret currentCaret = caretModel.getCurrentCaret();
         selectedText = currentCaret.getSelectedText() != null ? currentCaret.getSelectedText() : "";
-        dependencies = getDependencies(classPath);
+        dependencies = getDependencies(filePath);
         //初始化线程池
         ThreadFactory threadFactory = Executors.defaultThreadFactory();
         threadPool = new ThreadPoolExecutor(3, 5, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(2), threadFactory);
-        if (!"".equals(selectedText)) {
+        if (!"".equals(selectedText) && dependencies.size() > 0) {
             //从List<Dependency>中搜索选中的Dependency，并获取其详细信息
             List<Dependency> list = dependencies.stream().filter(item -> item.getArtifactId().equals(selectedText)).collect(Collectors.toList());
             if (list.size() > 0) {
@@ -125,6 +123,7 @@ public class MavenDependencyHelperAction extends AnAction {
 
     /**
      * 获取release类型的依赖信息
+     *
      * @return Elements
      * @throws IOException IOException
      */
@@ -136,6 +135,7 @@ public class MavenDependencyHelperAction extends AnAction {
 
     /**
      * 向ListModel中添加version信息
+     *
      * @param elementsByClass Elements
      */
     private void addToVersionListModel(Elements elementsByClass) {
@@ -154,6 +154,19 @@ public class MavenDependencyHelperAction extends AnAction {
         frame.setSize(525, 250);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        //esc键关闭窗口
+        frame.getRootPane().registerKeyboardAction(e -> {
+            frame.dispose();
+        }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        //窗体打开时textField获取焦点
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                textField.requestFocus();
+            }
+        });
 
         copyVersionButton = new JButton("Copy Version");
         copyVersionButton.setFont(new Font(null, Font.PLAIN, 15));
@@ -295,13 +308,14 @@ public class MavenDependencyHelperAction extends AnAction {
 
     /**
      * 读取并解析pom.xml，获取Dependency信息
-     * @param fileName 文件名
+     *
+     * @param filePath 文件名
      * @return List<Dependency>
      */
-    private List<Dependency> getDependencies(String fileName) {
+    private List<Dependency> getDependencies(String filePath) {
         List<Dependency> d = new ArrayList<>();
-        File file = new File(fileName);
-        if (fileName.contains("pom.xml")) {
+        if (filePath.contains("pom.xml")) {
+            File file = new File(filePath);
             try {
                 SAXReader saxReader = new SAXReader();
                 Document document = saxReader.read(file);
@@ -330,6 +344,7 @@ public class MavenDependencyHelperAction extends AnAction {
 
     /**
      * 选择依赖comboBox Item选中事件
+     *
      * @param event event
      */
     private void comboBoxItemSelectEvent(ItemEvent event) {
@@ -480,7 +495,7 @@ public class MavenDependencyHelperAction extends AnAction {
                     }
 
                 } else if ("Gradle".equals(itemString)) {
-                        dependencyText = dependencyTextForGradle();
+                    dependencyText = dependencyTextForGradle();
                 } else {
                     dependencyText = "";
                 }
