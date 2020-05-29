@@ -21,11 +21,28 @@ import java.util.List;
  */
 public class SearchMavenOrgDependencySearcher implements DependencySearcher {
 
-    private static final String SEARCH_URL = "https://search.maven.org/solrsearch/select?q=%s&start=0&rows=20";
+    /**
+     * 超时毫秒
+     */
+    private final int timeoutMs;
+
+    private static final String SEARCH_URL = "https://search.maven.org/solrsearch/select?q=%s&start=%s&rows=%s";
+
+    public SearchMavenOrgDependencySearcher() {
+        this(30000);
+    }
+
+    public SearchMavenOrgDependencySearcher(int timeoutMs) {
+        if (timeoutMs <= 0) {
+            throw new IllegalArgumentException("timeoutMs must grater than 0");
+        }
+        this.timeoutMs = timeoutMs;
+    }
 
     @Override
-    public List<Artifact> search(String text) throws Exception {
-        Document document = Jsoup.connect(String.format(SEARCH_URL, encodeUtf8(text))).ignoreContentType(true).get();
+    public List<Artifact> search(String text) throws IOException {
+        Document document = Jsoup.connect(String.format(SEARCH_URL, encodeUtf8(text), 0, 20))
+                .timeout(timeoutMs).ignoreContentType(true).get();
         JsonObject data = new Gson().fromJson(document.body().text(), JsonObject.class);
         JsonArray docs = data.getAsJsonObject("response").getAsJsonArray("docs");
 
@@ -44,7 +61,9 @@ public class SearchMavenOrgDependencySearcher implements DependencySearcher {
     @Override
     public List<Dependency> getDependencies(String groupId, String articleId) throws IOException {
         String text = String.format("g:%s AND a:%s", encodeUtf8(groupId), encodeUtf8(articleId)) + "&core=gav";
-        Document document = Jsoup.connect(String.format(SEARCH_URL, text)).ignoreContentType(true).get();
+        Document document = Jsoup.connect(String.format(SEARCH_URL, text, 0, 100))
+                .timeout(timeoutMs)
+                .ignoreContentType(true).get();
         JsonObject data = new Gson().fromJson(document.body().text(), JsonObject.class);
         JsonArray docs = data.getAsJsonObject("response").getAsJsonArray("docs");
 

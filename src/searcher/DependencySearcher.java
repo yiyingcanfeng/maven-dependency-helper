@@ -15,7 +15,7 @@ public interface DependencySearcher {
     /**
      * Search dependency.
      */
-    List<Artifact> search(String text) throws Exception;
+    List<Artifact> search(String text) throws IOException;
 
     /**
      * Fetch all version dependency by groupId & articleId.

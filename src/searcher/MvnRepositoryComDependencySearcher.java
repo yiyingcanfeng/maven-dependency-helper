@@ -17,10 +17,26 @@ import java.util.List;
  */
 public class MvnRepositoryComDependencySearcher implements DependencySearcher {
 
+    /**
+     * 超时毫秒
+     */
+    private final int timeoutMs;
+
+    public MvnRepositoryComDependencySearcher() {
+        this(30000);
+    }
+
+    public MvnRepositoryComDependencySearcher(int timeoutMs) {
+        if (timeoutMs <= 0) {
+            throw new IllegalArgumentException("timeoutMs must grater than 0");
+        }
+        this.timeoutMs = timeoutMs;
+    }
+
     @Override
-    public List<Artifact> search(String text) throws Exception {
+    public List<Artifact> search(String text) throws IOException {
         String searchUrl = "https://mvnrepository.com/search?q=" + text;
-        Document doc = Jsoup.connect(searchUrl).get();
+        Document doc = Jsoup.connect(searchUrl).timeout(timeoutMs).get();
         Elements elements = doc.getElementsByClass("im-subtitle");
 
         List<Artifact> artifacts = new ArrayList<>(elements.size());
@@ -38,7 +54,7 @@ public class MvnRepositoryComDependencySearcher implements DependencySearcher {
     @Override
     public List<Dependency> getDependencies(String groupId, String articleId) throws IOException {
         String url = String.format("https://mvnrepository.com/artifact/%s/%s", groupId, articleId);
-        Document doc = Jsoup.connect(url)
+        Document doc = Jsoup.connect(url).timeout(timeoutMs)
 //                .cookie("__cfduid", "d2056c86f8ed420230b9bc81de716eec31590713938")
                 .cookie("cf_clearance", "3285a877e4974e241bbaeed2b19b1d7a51bde0ff-1590713923-0-150")
 //                .cookie("MVN_SESSION", "eyJhbGciOiJIUzI1NiJ9.eyJkYXRhIjp7InVpZCI6IjkzZjFmOGMxLWExNDctMTFlYS1iY2RmLWIxN2NkNTgxZDlkOCJ9LCJleHAiOjE2MjIyNTAzNDQsIm5iZiI6MTU5MDcxNDM0NCwiaWF0IjoxNTkwNzE0MzQ0fQ.ChWhbOQGiKQMKSZG_NPzT462B32M79RZ4mWqxnU4y18")

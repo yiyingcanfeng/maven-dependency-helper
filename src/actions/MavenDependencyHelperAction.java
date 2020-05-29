@@ -24,6 +24,7 @@ import searcher.SearchMavenOrgDependencySearcher;
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -53,6 +54,7 @@ public class MavenDependencyHelperAction extends AnAction {
     private JList<String> versionJList;
     private DefaultListModel<String> versionListModel;
     private JScrollPane listScroller;
+    private JTextComponent tipsTextComponent;
 
     private String groupId;
     private String artifactId;
@@ -106,7 +108,8 @@ public class MavenDependencyHelperAction extends AnAction {
      */
     private void initView() {
         frame = new JFrame("Maven Dependency Helper");
-        frame.setSize(520, 240);
+        frame.setSize(520, 246);
+        frame.setResizable(false);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
@@ -165,6 +168,10 @@ public class MavenDependencyHelperAction extends AnAction {
 
         versionJList.addListSelectionListener(versionJListSelectionListener);
 
+        tipsTextComponent = new JTextPane();
+        tipsTextComponent.setFont(new Font(null, Font.PLAIN, 13));
+        tipsTextComponent.setForeground(Color.RED);
+
         //设置组件的位置和大小
         setLocationAndSize();
 
@@ -182,7 +189,7 @@ public class MavenDependencyHelperAction extends AnAction {
         textField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER && !"".equals(textField.getText())) {
+                if (searchButton.isEnabled() && e.getKeyCode() == KeyEvent.VK_ENTER && !"".equals(textField.getText())) {
                     search();
                 }
             }
@@ -205,6 +212,7 @@ public class MavenDependencyHelperAction extends AnAction {
         searchButton.setBounds(410, 45, 90, 28);
         listScroller.setBounds(20, 77, 130, 122);
         scrollPane.setBounds(170, 77, 330, 122);
+        tipsTextComponent.setBounds(170, 203, 330, 28);
     }
 
     /**
@@ -220,6 +228,7 @@ public class MavenDependencyHelperAction extends AnAction {
         frame.getContentPane().add(textField);
         frame.getContentPane().add(scrollPane);
         frame.getContentPane().add(listScroller);
+        frame.getContentPane().add(tipsTextComponent);
         frame.setVisible(true);
     }
 
@@ -231,6 +240,8 @@ public class MavenDependencyHelperAction extends AnAction {
     private void search() {
         String text = textField.getText();
         searchButton.setText("Searching...");
+        searchButton.setEnabled(false);
+        tipsTextComponent.setText("");
         threadPool.execute(() -> {
             try {
                 List<Artifact> artifacts = dependencySearcher.search(text);
@@ -239,6 +250,7 @@ public class MavenDependencyHelperAction extends AnAction {
                         comboBox.removeAllItems();
                         versionListModel.removeAllElements();
                         textArea.setText("");
+                        searchButton.setEnabled(true);
                         searchButton.setText("Search");
                     });
                     return;
@@ -254,9 +266,17 @@ public class MavenDependencyHelperAction extends AnAction {
                     }
                     comboBox.setSelectedIndex(0);
                     searchButton.setText("Search");
+                    searchButton.setEnabled(true);
                 });
-            } catch (Exception e1) {
-                e1.printStackTrace();
+            } catch (IOException e) {
+                SwingUtilities.invokeLater(() -> {
+                    versionListModel.removeAllElements();
+                    textArea.setText("");
+                    searchButton.setText("Search");
+                    searchButton.setEnabled(true);
+                    tipsTextComponent.setText("failed: " + e.getMessage());
+                });
+                e.printStackTrace();
             }
         });
     }
@@ -266,6 +286,8 @@ public class MavenDependencyHelperAction extends AnAction {
      */
     private void loadDependencyVersionsView() {
         copyVersionButton.setText("Loading...");
+        copyVersionButton.setEnabled(false);
+        tipsTextComponent.setText("");
         threadPool.execute(() -> {
             try {
                 List<Dependency> dependencies = dependencySearcher.getDependencies(this.groupId, this.artifactId);
@@ -280,8 +302,16 @@ public class MavenDependencyHelperAction extends AnAction {
                         textArea.setText("");
                     }
                     copyVersionButton.setText("Copy Version");
+                    copyVersionButton.setEnabled(true);
                 });
             } catch (IOException e) {
+                SwingUtilities.invokeLater(() -> {
+                    versionListModel.removeAllElements();
+                    textArea.setText("");
+                    copyVersionButton.setText("Copy Version");
+                    copyVersionButton.setEnabled(true);
+                    tipsTextComponent.setText("failed: " + e.getMessage());
+                });
                 e.printStackTrace();
             }
         });
