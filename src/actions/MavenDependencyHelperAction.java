@@ -140,6 +140,10 @@ public class MavenDependencyHelperAction extends AnAction {
         typeComboBox.setFont(new Font(null, Font.PLAIN, 15));
         typeComboBox.addItem("Maven");
         typeComboBox.addItem("Gradle");
+        typeComboBox.addItem("SBT");
+        typeComboBox.addItem("Ivy");
+        typeComboBox.addItem("Grape");
+        typeComboBox.addItem("Leiningen");
 
         textArea = new JTextArea();
         textArea.setColumns(10);
@@ -418,10 +422,35 @@ public class MavenDependencyHelperAction extends AnAction {
      * 根据不同构建工具, 生成依赖文本
      */
     private String dependencyTextByType(String type) {
-        if ("Gradle".equals(type)) {
-            return dependencyTextForGradle();
+        String text;
+        switch (type) {
+            case "Maven":
+                text = dependencyTextForMaven();
+                break;
+            case "Gradle":
+                text = dependencyTextForGradle();
+                break;
+            case "SBT":
+                text = String.format("libraryDependencies += \"%s\" %s \"%s\" %s \"%s\"",
+                        this.groupId, "%", this.artifactId, "%", this.version);
+                break;
+            case "Ivy":
+                text = String.format("<dependency org=\"%s\" name=\"%s\" rev=\"%s\" />",
+                        this.groupId, this.artifactId, this.version);
+                break;
+            case "Grape":
+                text = String.format("@Grapes(\n" +
+                                "  @Grab(group='junit', module='junit', version='4.13')\n" +
+                                ")",
+                        this.groupId, this.artifactId, this.version);
+                break;
+            case "Leiningen":
+                text = String.format("[%s/%s \"%s\"]", this.groupId, this.artifactId, this.version);
+                break;
+            default:
+                text = "";
         }
-        return dependencyTextForMaven();
+        return text;
     }
 
     /**
