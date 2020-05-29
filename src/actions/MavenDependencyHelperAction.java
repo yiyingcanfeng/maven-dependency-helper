@@ -22,6 +22,8 @@ import searcher.DependencySearcher;
 import searcher.SearchMavenOrgDependencySearcher;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -152,11 +154,12 @@ public class MavenDependencyHelperAction extends AnAction {
 
         versionListModel = new DefaultListModel<>();
         versionJList = new JBList<>(versionListModel);
+        versionJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         listScroller = new JBScrollPane(versionJList);
         listScroller.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
         listScroller.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
-        versionJList.addMouseListener(versionJListMouseAdapter);
+        versionJList.addListSelectionListener(versionJListSelectionListener);
 
         //设置组件的位置和大小
         setLocationAndSize();
@@ -181,6 +184,9 @@ public class MavenDependencyHelperAction extends AnAction {
             }
         });
         comboBox.addItemListener(this::comboBoxItemSelectEvent);
+        typeComboBox.addItemListener(this::typeComboBoxItemSelectEvent);
+        copyTextAeraButton.addMouseListener(this.copyTextAreaButtonMouseListener);
+        copyVersionButton.addMouseListener(versionCopyButtonMouseListener);
     }
 
     /**
@@ -228,36 +234,25 @@ public class MavenDependencyHelperAction extends AnAction {
                     SwingUtilities.invokeLater(() -> {
                         comboBox.removeAllItems();
                         versionListModel.removeAllElements();
-                        searchButton.setText("Search");
                         textArea.setText("");
+                        searchButton.setText("Search");
                     });
                     return;
                 }
                 Artifact firstArtifact = artifacts.get(0);
                 this.groupId = firstArtifact.getGroupId();
                 this.artifactId = firstArtifact.getArtifactId();
-                List<Dependency> dependencies = dependencySearcher.getDependencies(this.groupId, this.artifactId);
 
                 SwingUtilities.invokeLater(() -> {
                     comboBox.removeAllItems();
                     for (Artifact one : artifacts) {
                         comboBox.addItem(one.getGroupId() + "/" + one.getArtifactId());
                     }
-                    versionListModel.removeAllElements();
-                    for (Dependency one : dependencies) {
-                        versionListModel.addElement(one.getVersion());
-                    }
-                    if (versionListModel.size() > 0) {
-                        versionJList.setSelectedIndex(0);
-                    } else {
-                        textArea.setText("");
-                    }
+                    comboBox.setSelectedIndex(0);
                     searchButton.setText("Search");
                 });
-            } catch (IOException e1) {
+            } catch (Exception e1) {
                 e1.printStackTrace();
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         });
     }
@@ -274,6 +269,11 @@ public class MavenDependencyHelperAction extends AnAction {
                     versionListModel.removeAllElements();
                     for (Dependency dependency : dependencies) {
                         versionListModel.addElement(dependency.getVersion());
+                    }
+                    if (versionListModel.size() > 0) {
+                        versionJList.setSelectedIndex(0);
+                    } else {
+                        textArea.setText("");
                     }
                     copyVersionButton.setText("Copy Version");
                 });
@@ -298,68 +298,79 @@ public class MavenDependencyHelperAction extends AnAction {
     }
 
     /**
-     * JList点击事件
+     * 依赖类型ComboBox Item选中事件
+     *
+     * @param event event
      */
-    private MouseAdapter versionJListMouseAdapter = new MouseAdapter() {
+    private void typeComboBoxItemSelectEvent(ItemEvent event) {
+        if (event.getStateChange() == ItemEvent.SELECTED) {
+            String buildToolType = event.getItem().toString();
+            String dependencyText = dependencyTextByType(buildToolType);
+            textArea.setText(dependencyText);
+        }
+    }
+
+
+    /**
+     * 版本选择事件
+     */
+    private ListSelectionListener versionJListSelectionListener = new ListSelectionListener() {
         @Override
-        public void mouseClicked(MouseEvent e) {
+        public void valueChanged(ListSelectionEvent e) {
             JList jList = (JList) e.getSource();
-            //JList为空时，点击其空白区域仍会触发点击事件
             Object selectedValue = jList.getSelectedValue();
             version = selectedValue == null ? "" : selectedValue.toString();
             String type = typeComboBox.getSelectedItem().toString();
             String dependencyText = dependencyTextByType(type);
             textArea.setText(dependencyText);
-            //copyVersion按钮点击事件
-            copyVersionButton.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    StringSelection stringSelection = new StringSelection(version);
-                    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                    clipboard.setContents(stringSelection, null);
-                    copyVersionButton.setText("Copy Success!");
-                    ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
-                    executorService.schedule(() -> {
-                        SwingUtilities.invokeLater(() -> {
-                                    copyVersionButton.setText("Copy Version");
-                                }
-
-                        );
-                    }, 1000, TimeUnit.MILLISECONDS);
-                }
-            });
-            //copyText按钮点击事件
-            copyTextAeraButton.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    StringSelection stringSelection = new StringSelection(textArea.getText());
-                    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                    clipboard.setContents(stringSelection, null);
-                    ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
-                    copyTextAeraButton.setText("Copy Success!");
-                    executorService.schedule(() -> {
-                        SwingUtilities.invokeLater(() -> {
-                                    copyTextAeraButton.setText("Copy Content");
-                                }
-
-                        );
-                    }, 1000, TimeUnit.MILLISECONDS);
-                }
-            });
-            //依赖类型ComboBox Item事件
-            typeComboBox.addItemListener(this::typeComboBoxItemSelectEvent);
         }
+    };
 
-        /**
-         * 依赖类型ComboBox Item选中事件
-         * @param event event
-         */
-        private void typeComboBoxItemSelectEvent(ItemEvent event) {
-            if (event.getStateChange() == ItemEvent.SELECTED) {
-                String buildToolType = event.getItem().toString();
-                String dependencyText = dependencyTextByType(buildToolType);
-                textArea.setText(dependencyText);
-            }
+    /**
+     * 依赖复制按钮事件
+     */
+    private MouseListener copyTextAreaButtonMouseListener = new MouseAdapter() {
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            String text = textArea.getText();
+            if (text == null || text.length() == 0) return;
+
+            StringSelection stringSelection = new StringSelection(text);
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            clipboard.setContents(stringSelection, null);
+            ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+            copyTextAeraButton.setText("Copy Success!");
+            executorService.schedule(() -> {
+                SwingUtilities.invokeLater(() -> {
+                            copyTextAeraButton.setText("Copy Content");
+                        }
+
+                );
+            }, 1000, TimeUnit.MILLISECONDS);
+        }
+    };
+
+    /**
+     * 版本号复制按钮事件
+     */
+    private MouseListener versionCopyButtonMouseListener = new MouseAdapter() {
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            String version = versionJList.getSelectedValue();
+            if (version == null || version.length() == 0) return;
+
+            StringSelection stringSelection = new StringSelection(version);
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            clipboard.setContents(stringSelection, null);
+            copyVersionButton.setText("Copy Success!");
+            ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+            executorService.schedule(() -> {
+                SwingUtilities.invokeLater(() -> {
+                            copyVersionButton.setText("Copy Version");
+                        }
+
+                );
+            }, 1000, TimeUnit.MILLISECONDS);
         }
     };
 
