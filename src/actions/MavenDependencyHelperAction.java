@@ -106,7 +106,7 @@ public class MavenDependencyHelperAction extends AnAction {
      */
     private void initView() {
         frame = new JFrame("Maven Dependency Helper");
-        frame.setSize(525, 250);
+        frame.setSize(520, 240);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
@@ -156,7 +156,7 @@ public class MavenDependencyHelperAction extends AnAction {
         versionJList = new JBList<>(versionListModel);
         versionJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         listScroller = new JBScrollPane(versionJList);
-        listScroller.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+        listScroller.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         listScroller.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
         versionJList.addListSelectionListener(versionJListSelectionListener);
@@ -193,14 +193,14 @@ public class MavenDependencyHelperAction extends AnAction {
      * 设置组件的位置和大小
      */
     private void setLocationAndSize() {
-        comboBox.setBounds(20, 10, 110, 30);
-        textField.setBounds(190, 10, 300, 30);
-        typeComboBox.setBounds(310, 45, 80, 25);
-        copyVersionButton.setBounds(20, 45, 110, 25);
-        copyTextAeraButton.setBounds(190, 45, 110, 25);
-        searchButton.setBounds(400, 45, 90, 25);
-        listScroller.setBounds(20, 77, 110, 122);
-        scrollPane.setBounds(190, 77, 300, 122);
+        comboBox.setBounds(20, 10, 130, 30);
+        textField.setBounds(170, 10, 330, 30);
+        typeComboBox.setBounds(310, 45, 90, 28);
+        copyVersionButton.setBounds(20, 45, 130, 28);
+        copyTextAeraButton.setBounds(170, 45, 130, 28);
+        searchButton.setBounds(410, 45, 90, 28);
+        listScroller.setBounds(20, 77, 130, 122);
+        scrollPane.setBounds(170, 77, 330, 122);
     }
 
     /**
@@ -303,7 +303,12 @@ public class MavenDependencyHelperAction extends AnAction {
      * @param event event
      */
     private void typeComboBoxItemSelectEvent(ItemEvent event) {
-        if (event.getStateChange() == ItemEvent.SELECTED) {
+        if (event.getStateChange() != ItemEvent.SELECTED) return;
+
+        String version = versionJList.getSelectedValue();
+        if (version == null || version.length() == 0) {
+            textArea.setText("");
+        } else {
             String buildToolType = event.getItem().toString();
             String dependencyText = dependencyTextByType(buildToolType);
             textArea.setText(dependencyText);
