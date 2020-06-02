@@ -10,8 +10,14 @@ import java.util.List;
  * To search dependency.
  */
 public interface DependencySearcher {
+    /**
+     * get detect speed url
+     */
+    String getDetectSpeedUrl();
 
+    int getSpeed();
 
+    void setSpeed(int speed);
     /**
      * Search dependency.
      */

@@ -9,6 +9,7 @@ import com.intellij.openapi.editor.CaretModel;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.psi.PsiFile;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
 import model.Artifact;
@@ -18,8 +19,10 @@ import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 import org.jetbrains.annotations.NotNull;
-import searcher.DependencySearcher;
-import searcher.SearchMavenOrgDependencySearcher;
+import searcher.*;
+import searcher.impl.AliyunMavenDependencySearcher;
+import searcher.impl.MvnRepositoryComDependencySearcher;
+import searcher.impl.SearchMavenOrgDependencySearcher;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -31,10 +34,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.*;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.*;
 
 /**
@@ -49,26 +50,47 @@ public class MavenDependencyHelperAction extends AnAction {
     private JButton searchButton;
     private JComboBox<String> comboBox;
     private JComboBox<String> typeComboBox;
+    private JComboBox<String> sourceComboBox;
     private JTextField textField;
     private JBScrollPane scrollPane;
     private JList<String> versionJList;
     private DefaultListModel<String> versionListModel;
-    private JScrollPane listScroller;
+    private JScrollPane versionListScroller;
     private JTextComponent tipsTextComponent;
+    private JBLabel sourceLabel;
 
     private String groupId;
     private String artifactId;
     private String version;
     private String scope;
 
-    private ThreadPoolExecutor threadPool;
-    private DependencySearcher dependencySearcher;
+    public static ThreadFactory threadFactory = Executors.defaultThreadFactory();
+    public static ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(5, threadFactory);;
+    public static ThreadPoolExecutor threadPool = new ThreadPoolExecutor(3, 5, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(2), threadFactory);;
+    public static DependencySearcher dependencySearcher;
+    public static Map<Class<? extends DependencySearcher>, String> searcherTextMap = new HashMap<>();
+    public static Map<String, Class<? extends DependencySearcher>> textSearcherMap = new HashMap<>();
+    private static LinkedList<String> sourceTextList = new LinkedList<>();
+    static {
+        searcherTextMap.put(MvnRepositoryComDependencySearcher.class, "mvnrepository.com");
+        searcherTextMap.put(SearchMavenOrgDependencySearcher.class, "search.maven.org");
+        searcherTextMap.put(AliyunMavenDependencySearcher.class, "maven.aliyun.com");
+        textSearcherMap.put("mvnrepository.com", MvnRepositoryComDependencySearcher.class);
+        textSearcherMap.put("search.maven.org", SearchMavenOrgDependencySearcher.class);
+        textSearcherMap.put("maven.aliyun.com", AliyunMavenDependencySearcher.class);
+
+        sourceTextList.add("mvnrepository.com");
+        sourceTextList.add("search.maven.org");
+        sourceTextList.add("maven.aliyun.com");
+    }
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
-        ThreadFactory threadFactory = Executors.defaultThreadFactory();
-        this.threadPool = new ThreadPoolExecutor(3, 5, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(2), threadFactory);
-        this.dependencySearcher = new SearchMavenOrgDependencySearcher();
+        if (dependencySearcher == null) {
+            dependencySearcher = DependencySearcherManager.getFastest();
+        }
+        sourceTextList.remove(searcherTextMap.get(dependencySearcher.getClass()));
+        sourceTextList.addFirst(searcherTextMap.get(dependencySearcher.getClass()));
         this.groupId = "";
         this.artifactId = "";
         this.version = "";
@@ -108,15 +130,13 @@ public class MavenDependencyHelperAction extends AnAction {
      */
     private void initView() {
         frame = new JFrame("Maven Dependency Helper");
-        frame.setSize(520, 246);
+        frame.setSize(520, 280);
         frame.setResizable(false);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         //esc键关闭窗口
-        frame.getRootPane().registerKeyboardAction(e -> {
-            frame.dispose();
-        }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
+        frame.getRootPane().registerKeyboardAction(e -> frame.dispose(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_IN_FOCUSED_WINDOW);
 
         //窗体打开时textField获取焦点
         frame.addWindowListener(new WindowAdapter() {
@@ -162,15 +182,24 @@ public class MavenDependencyHelperAction extends AnAction {
         versionListModel = new DefaultListModel<>();
         versionJList = new JBList<>(versionListModel);
         versionJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        listScroller = new JBScrollPane(versionJList);
-        listScroller.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        listScroller.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        versionListScroller = new JBScrollPane(versionJList);
+        versionListScroller.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        versionListScroller.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
         versionJList.addListSelectionListener(versionJListSelectionListener);
 
         tipsTextComponent = new JTextPane();
         tipsTextComponent.setFont(new Font(null, Font.PLAIN, 13));
         tipsTextComponent.setForeground(Color.RED);
+
+        sourceLabel = new JBLabel("source:");
+        sourceLabel.setFont(new Font(null, Font.PLAIN, 15));
+
+        sourceComboBox = new ComboBox<>();
+        sourceComboBox.setFont(new Font(null, Font.PLAIN, 15));
+        for (String s : sourceTextList) {
+            sourceComboBox.addItem(s);
+        }
 
         //设置组件的位置和大小
         setLocationAndSize();
@@ -196,6 +225,7 @@ public class MavenDependencyHelperAction extends AnAction {
         });
         comboBox.addItemListener(this::comboBoxItemSelectEvent);
         typeComboBox.addItemListener(this::typeComboBoxItemSelectEvent);
+        sourceComboBox.addItemListener(this::sourceComboBoxItemSelectEvent);
         copyTextAeraButton.addMouseListener(this.copyTextAreaButtonMouseListener);
         copyVersionButton.addMouseListener(versionCopyButtonMouseListener);
     }
@@ -205,14 +235,16 @@ public class MavenDependencyHelperAction extends AnAction {
      */
     private void setLocationAndSize() {
         comboBox.setBounds(20, 10, 130, 30);
-        textField.setBounds(170, 10, 330, 30);
+        textField.setBounds(170, 7, 330, 34);
         typeComboBox.setBounds(310, 45, 90, 28);
         copyVersionButton.setBounds(20, 45, 130, 28);
         copyTextAeraButton.setBounds(170, 45, 130, 28);
         searchButton.setBounds(410, 45, 90, 28);
-        listScroller.setBounds(20, 77, 130, 122);
-        scrollPane.setBounds(170, 77, 330, 122);
-        tipsTextComponent.setBounds(170, 203, 330, 28);
+        versionListScroller.setBounds(20, 77, 130, 153);
+        scrollPane.setBounds(170, 108, 330, 122);
+        tipsTextComponent.setBounds(170, 222, 330, 28);
+        sourceLabel.setBounds(170, 77, 60, 28);
+        sourceComboBox.setBounds(240, 77, 180, 28);
     }
 
     /**
@@ -227,8 +259,10 @@ public class MavenDependencyHelperAction extends AnAction {
         frame.getContentPane().add(typeComboBox);
         frame.getContentPane().add(textField);
         frame.getContentPane().add(scrollPane);
-        frame.getContentPane().add(listScroller);
+        frame.getContentPane().add(versionListScroller);
         frame.getContentPane().add(tipsTextComponent);
+        frame.getContentPane().add(sourceLabel);
+        frame.getContentPane().add(sourceComboBox);
         frame.setVisible(true);
     }
 
@@ -349,6 +383,17 @@ public class MavenDependencyHelperAction extends AnAction {
         }
     }
 
+    /**
+     * 数据源ComboBox Item选中事件
+     *
+     * @param event
+     */
+    private void sourceComboBoxItemSelectEvent(ItemEvent event) {
+        if (event.getStateChange() == ItemEvent.SELECTED) {
+            String s = event.getItem().toString();
+            dependencySearcher = DependencySearcherManager.get(textSearcherMap.get(s));
+        }
+    }
 
     /**
      * 版本选择事件

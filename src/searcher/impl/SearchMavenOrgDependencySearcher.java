@@ -1,4 +1,4 @@
-package searcher;
+package searcher.impl;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -8,6 +8,7 @@ import model.Artifact;
 import model.Dependency;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import searcher.DependencySearcher;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -26,6 +27,16 @@ public class SearchMavenOrgDependencySearcher implements DependencySearcher {
      */
     private final int timeoutMs;
 
+    /**
+     * 网站速度，单位: ms
+     */
+    private int speed = 2;
+
+    /**
+     * 用于测速的url
+     */
+    public static final String DETECT_SPEED_URL = "https://search.maven.org/solrsearch/select?q=commons&start=0&rows=20";
+
     private static final String SEARCH_URL = "https://search.maven.org/solrsearch/select?q=%s&start=%s&rows=%s";
 
     public SearchMavenOrgDependencySearcher() {
@@ -37,6 +48,11 @@ public class SearchMavenOrgDependencySearcher implements DependencySearcher {
             throw new IllegalArgumentException("timeoutMs must grater than 0");
         }
         this.timeoutMs = timeoutMs;
+    }
+
+    @Override
+    public String getDetectSpeedUrl() {
+        return DETECT_SPEED_URL;
     }
 
     @Override
@@ -86,5 +102,15 @@ public class SearchMavenOrgDependencySearcher implements DependencySearcher {
             throw new RuntimeException("Never happen.", e);
         }
 
+    }
+
+    @Override
+    public int getSpeed() {
+        return speed;
+    }
+
+    @Override
+    public void setSpeed(int speed) {
+        this.speed = speed;
     }
 }

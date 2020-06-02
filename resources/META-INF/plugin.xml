@@ -1,7 +1,7 @@
 <idea-plugin url="https://github.com/yiyingcanfeng/maven-dependency-helper">
     <id>com.yiycf.plugins.mavenDependencyHelper</id>
     <name>Maven Dependency Helper</name>
-    <version>1.4</version>
+    <version>2.0</version>
     <vendor email="yiyingcanfeng@qq.com">yiyingcanfeng</vendor>
 
     <description><![CDATA[
@@ -33,20 +33,25 @@
     <change-notes><![CDATA[
         <ul>
             <li>
-                <p>1.1</p>
-                Fix bug that not working on Android Studio
+                <p>2.0</p>
+                <p>Supports more search sources, and program can automatically and periodically detect and choose the fastest search source, you can also choose what you like. You can set the interval in Settings/Tools</p>
+                <p>Add more build tools dependency text format.</p>
             </li>
             <li>
-                <p>1.2</p>
-                Fix NullPointerException that occurs in some cases
+                <p>1.4</p>
+                Now the window can be closed when the ESC key is pressed
             </li>
             <li>
                 <p>1.3</p>
                 Support for generating gradle dependency
             </li>
             <li>
-                <p>1.4</p>
-                Now the window can be closed when the ESC key is pressed
+                <p>1.2</p>
+                Fix NullPointerException that occurs in some cases
+            </li>
+            <li>
+                <p>1.1</p>
+                Fix bug that not working on Android Studio
             </li>
         </ul>
         ]]>
@@ -62,7 +67,9 @@
     <depends>com.intellij.modules.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-
+        <applicationConfigurable parentId="tools" instance="actions.ApplicationSettingsConfigurable"
+                                 id="actions.ApplicationSettingsConfigurable" displayName="Maven Dependency Helper"/>
+        <applicationService serviceImplementation="actions.AppSettingsState"/>
     </extensions>
 
     <actions>
