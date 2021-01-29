@@ -1,7 +1,7 @@
 <idea-plugin url="https://github.com/yiyingcanfeng/maven-dependency-helper">
     <id>com.yiycf.plugins.mavenDependencyHelper</id>
     <name>Maven Dependency Helper</name>
-    <version>2.0</version>
+    <version>2.1</version>
     <vendor email="yiyingcanfeng@qq.com">yiyingcanfeng</vendor>
 
     <description><![CDATA[
@@ -32,6 +32,10 @@
     </description>
     <change-notes><![CDATA[
         <ul>
+            <li>
+                <p>2.1</p>
+                Replace deprecated api.
+            </li>
             <li>
                 <p>2.0</p>
                 <p>Supports more search sources, and program can automatically and periodically detect and choose the fastest search source, you can also choose what you like. You can set the interval in Settings/Tools</p>
@@ -70,6 +74,7 @@
         <applicationConfigurable parentId="tools" instance="actions.ApplicationSettingsConfigurable"
                                  id="actions.ApplicationSettingsConfigurable" displayName="Maven Dependency Helper"/>
         <applicationService serviceImplementation="actions.AppSettingsState"/>
+        <notificationGroup id="MavenDependencyHelper" displayType="NONE" />
     </extensions>
 
     <actions>

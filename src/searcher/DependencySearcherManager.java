@@ -2,10 +2,7 @@ package searcher;
 
 import actions.AppSettingsState;
 import actions.MavenDependencyHelperAction;
-import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationDisplayType;
-import com.intellij.notification.NotificationGroup;
-import com.intellij.notification.NotificationType;
+import com.intellij.notification.*;
 import com.intellij.openapi.project.Project;
 import org.jsoup.Jsoup;
 import searcher.impl.AliyunMavenDependencySearcher;
@@ -29,7 +26,7 @@ import java.util.stream.Collectors;
  */
 public class DependencySearcherManager {
 
-    private static final NotificationGroup NOTIFICATION_GROUP = new NotificationGroup("MavenDependencyHelper", NotificationDisplayType.NONE, true);
+    private static final NotificationGroup NOTIFICATION_GROUP = NotificationGroupManager.getInstance().getNotificationGroup("MavenDependencyHelper");
 
     private static final HashMap<Class<? extends DependencySearcher>, DependencySearcher> pool = new HashMap<>();
 

@@ -9,6 +9,7 @@ import com.intellij.openapi.editor.CaretModel;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.psi.PsiFile;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
@@ -190,7 +191,7 @@ public class MavenDependencyHelperAction extends AnAction {
 
         tipsTextComponent = new JTextPane();
         tipsTextComponent.setFont(new Font(null, Font.PLAIN, 13));
-        tipsTextComponent.setForeground(Color.RED);
+        tipsTextComponent.setForeground(JBColor.RED);
 
         sourceLabel = new JBLabel("source:");
         sourceLabel.setFont(new Font(null, Font.PLAIN, 15));
