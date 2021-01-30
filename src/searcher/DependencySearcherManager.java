@@ -2,7 +2,9 @@ package searcher;
 
 import actions.AppSettingsState;
 import actions.MavenDependencyHelperAction;
+import actions.MyInvocationHandler;
 import com.intellij.notification.*;
+import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.project.Project;
 import org.jsoup.Jsoup;
 import searcher.impl.AliyunMavenDependencySearcher;
@@ -10,11 +12,10 @@ import searcher.impl.MvnRepositoryComDependencySearcher;
 import searcher.impl.SearchMavenOrgDependencySearcher;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -26,7 +27,7 @@ import java.util.stream.Collectors;
  */
 public class DependencySearcherManager {
 
-    private static final NotificationGroup NOTIFICATION_GROUP = NotificationGroupManager.getInstance().getNotificationGroup("MavenDependencyHelper");
+    private static NotificationGroup NOTIFICATION_GROUP = null;
 
     private static final HashMap<Class<? extends DependencySearcher>, DependencySearcher> pool = new HashMap<>();
 
@@ -41,6 +42,35 @@ public class DependencySearcherManager {
     private static int speedTestInterval = AppSettingsState.getInstance().speedDetectInterval;
 
     static {
+        String fullVersion = ApplicationInfo.getInstance().getFullVersion();
+        // 'NotificationGroup(java.lang.String, com.intellij.notification.NotificationDisplayType, boolean)' is deprecated is deprecated after 2020.2.4
+        if (Integer.parseInt(fullVersion.replace(".", "")) <= 202024) {
+            try {
+                Class<?> aClass = Class.forName("com.intellij.notification.NotificationGroup");
+                NOTIFICATION_GROUP  = (NotificationGroup) aClass.getDeclaredConstructor(
+                        String.class, NotificationDisplayType.class, boolean.class
+                ).newInstance("MavenDependencyHelper", NotificationDisplayType.NONE, true);
+            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+            //NOTIFICATION_GROUP = new NotificationGroup("MavenDependencyHelper", NotificationDisplayType.NONE, true);
+        } else {
+            try {
+                Class<?> aClass = Class.forName("com.intellij.notification.NotificationGroupManager");
+                Class<?> aClass1 = Class.forName("com.intellij.notification.impl.NotificationGroupManagerImpl");
+                Object o = aClass1.getDeclaredConstructor().newInstance();
+                Object instance = Proxy.newProxyInstance(
+                        aClass.getClassLoader(),
+                        new Class[]{aClass},
+                        new MyInvocationHandler(o)
+                );
+                Object invoke = aClass.getMethod("getInstance").invoke(instance);
+                NOTIFICATION_GROUP = (NotificationGroup) invoke.getClass().getMethod("getNotificationGroup", String.class).invoke(o, "MavenDependencyHelper");
+            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+            //NOTIFICATION_GROUP = NotificationGroupManager.getInstance().getNotificationGroup("MavenDependencyHelper");
+        }
         pool.put(AliyunMavenDependencySearcher.class, new AliyunMavenDependencySearcher());
         pool.put(MvnRepositoryComDependencySearcher.class, new MvnRepositoryComDependencySearcher());
         pool.put(SearchMavenOrgDependencySearcher.class, new SearchMavenOrgDependencySearcher());
