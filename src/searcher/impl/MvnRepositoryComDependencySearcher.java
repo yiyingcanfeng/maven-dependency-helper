@@ -7,6 +7,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import searcher.DependencySearcher;
+import util.OkHttpUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,7 +15,6 @@ import java.util.List;
 
 /**
  * Search dependencies from https://mvnrepository.com
- * TODO: handle http 503
  */
 public class MvnRepositoryComDependencySearcher implements DependencySearcher {
 
@@ -52,7 +52,9 @@ public class MvnRepositoryComDependencySearcher implements DependencySearcher {
     @Override
     public List<Artifact> search(String text) throws IOException {
         String searchUrl = "https://mvnrepository.com/search?q=" + text;
-        Document doc = Jsoup.connect(searchUrl).timeout(timeoutMs).get();
+        // jsoup visit mvnrepository.com may return 403, use okhttp instead
+        String s = OkHttpUtils.get(searchUrl);
+        Document doc = Jsoup.parse(s);
         Elements elements = doc.getElementsByClass("im-subtitle");
 
         List<Artifact> artifacts = new ArrayList<>(elements.size());
@@ -71,12 +73,9 @@ public class MvnRepositoryComDependencySearcher implements DependencySearcher {
     @Override
     public List<Dependency> getDependencies(String groupId, String artifactId) throws IOException {
         String url = String.format("https://mvnrepository.com/artifact/%s/%s", groupId, artifactId);
-        Document doc = Jsoup.connect(url).timeout(timeoutMs)
-//                .cookie("__cfduid", "d2056c86f8ed420230b9bc81de716eec31590713938")
-                .cookie("cf_clearance", "3285a877e4974e241bbaeed2b19b1d7a51bde0ff-1590713923-0-150")
-//                .cookie("MVN_SESSION", "eyJhbGciOiJIUzI1NiJ9.eyJkYXRhIjp7InVpZCI6IjkzZjFmOGMxLWExNDctMTFlYS1iY2RmLWIxN2NkNTgxZDlkOCJ9LCJleHAiOjE2MjIyNTAzNDQsIm5iZiI6MTU5MDcxNDM0NCwiaWF0IjoxNTkwNzE0MzQ0fQ.ChWhbOQGiKQMKSZG_NPzT462B32M79RZ4mWqxnU4y18")
-                .header("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36")
-                .get();
+        // jsoup visit mvnrepository.com may return 403, use okhttp instead
+        String s = OkHttpUtils.get(url);
+        Document doc = Jsoup.parse(s);
         Elements elements = doc.getElementsByClass("vbtn release");
 
         List<Dependency> dependencies = new ArrayList<>(elements.size());

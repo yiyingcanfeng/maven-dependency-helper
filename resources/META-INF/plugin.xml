@@ -24,6 +24,7 @@
             <li>
                 Support for copying version information or complete dependency information directly to the clipboard
             </li>
+            <img src="https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show4.gif?raw=true" alt="">
             <img src="https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show1.gif?raw=true" alt="">
             <img src="https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show2.gif?raw=true" alt="">
             <img src="https://github.com/yiyingcanfeng/maven-dependency-helper/blob/master/show3.gif?raw=true" alt="">
@@ -32,6 +33,11 @@
     </description>
     <change-notes><![CDATA[
         <ul>
+            <li>
+                <p>2.3</p>
+                <p>Now can get dependency by cursor location without artifactId selected.</p>
+                <p>Optimize dependency search.</p>
+            </li>
             <li>
                 <p>2.2</p>
                 Compatibility fix for 2021.2
@@ -91,5 +97,5 @@
         </action>
 
     </actions>
-
+    <depends>org.jetbrains.idea.maven</depends>
 </idea-plugin>

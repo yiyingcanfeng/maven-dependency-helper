@@ -4,15 +4,20 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.LangDataKeys;
-import com.intellij.openapi.editor.Caret;
-import com.intellij.openapi.editor.CaretModel;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
+import com.intellij.psi.xml.XmlElement;
+import com.intellij.psi.xml.XmlFile;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.util.xml.DomFileElement;
+import com.intellij.util.xml.DomManager;
 import model.Artifact;
 import model.Dependency;
 import org.dom4j.Document;
@@ -20,7 +25,19 @@ import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 import org.jetbrains.annotations.NotNull;
-import searcher.*;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.idea.maven.dom.model.MavenDomDependencies;
+import org.jetbrains.idea.maven.dom.model.MavenDomDependency;
+import org.jetbrains.idea.maven.dom.model.MavenDomProjectModel;
+import org.jetbrains.idea.maven.model.MavenArtifact;
+import org.jetbrains.idea.maven.model.MavenArtifactNode;
+import org.jetbrains.idea.maven.model.MavenId;
+import org.jetbrains.idea.maven.navigator.MavenNavigationUtil;
+import org.jetbrains.idea.maven.project.MavenProject;
+import org.jetbrains.idea.maven.project.MavenProjectsManager;
+import org.jetbrains.idea.maven.utils.actions.MavenActionUtil;
+import searcher.DependencySearcher;
+import searcher.DependencySearcherManager;
 import searcher.impl.AliyunMavenDependencySearcher;
 import searcher.impl.MvnRepositoryComDependencySearcher;
 import searcher.impl.SearchMavenOrgDependencySearcher;
@@ -35,8 +52,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 
 /**
@@ -66,12 +83,15 @@ public class MavenDependencyHelperAction extends AnAction {
     private String scope;
 
     public static ThreadFactory threadFactory = Executors.defaultThreadFactory();
-    public static ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(5, threadFactory);;
-    public static ThreadPoolExecutor threadPool = new ThreadPoolExecutor(3, 5, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(2), threadFactory);;
+    public static ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(5, threadFactory);
+    ;
+    public static ThreadPoolExecutor threadPool = new ThreadPoolExecutor(3, 5, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(2), threadFactory);
+    ;
     public static DependencySearcher dependencySearcher;
     public static Map<Class<? extends DependencySearcher>, String> searcherTextMap = new HashMap<>();
     public static Map<String, Class<? extends DependencySearcher>> textSearcherMap = new HashMap<>();
     private static LinkedList<String> sourceTextList = new LinkedList<>();
+
     static {
         searcherTextMap.put(MvnRepositoryComDependencySearcher.class, "mvnrepository.com");
         searcherTextMap.put(SearchMavenOrgDependencySearcher.class, "search.maven.org");
@@ -85,8 +105,66 @@ public class MavenDependencyHelperAction extends AnAction {
         sourceTextList.add("maven.aliyun.com");
     }
 
+    private static VirtualFile getVirtualFile(MavenArtifactNode myArtifactNode, Project project, MavenProject mavenProject) {
+        final MavenArtifactNode parent = myArtifactNode.getParent();
+        final VirtualFile file;
+        if (parent == null) {
+            file = mavenProject.getFile();
+        } else {
+            MavenArtifact artifact = parent.getArtifact();
+            final MavenId id = new MavenId(artifact.getGroupId(), artifact.getArtifactId(), artifact.getBaseVersion());
+
+            final MavenProject pr = MavenProjectsManager.getInstance(project).findProject(id);
+            file = pr == null ? MavenNavigationUtil.getArtifactFile(project, id) : pr.getFile();
+        }
+        return file;
+    }
+
+    private MavenProject mavenProject;
+    private Project project;
+
+    protected DomFileElement getDomFileElement(MavenArtifactNode mavenArtifactNode) {
+        XmlFile xmlFile = getXmlFile(mavenArtifactNode);
+        if (xmlFile == null) {
+            return null;
+        }
+        return DomManager.getDomManager(project).getFileElement(xmlFile, MavenDomProjectModel.class);
+    }
+
+    protected XmlFile getXmlFile(MavenArtifactNode artifact) {
+        VirtualFile virtualFile = getVirtualFile(artifact, project, mavenProject);
+        if (virtualFile != null) {
+            PsiFile psiFile = PsiManager.getInstance(project).findFile(virtualFile);
+            if (psiFile instanceof XmlFile) {
+                return (XmlFile) psiFile;
+            }
+        }
+        return null;
+    }
+
+    public int getCollectionIndex(@NotNull MavenDomDependencies dependencies, @Nullable Editor editor) {
+        if (editor != null) {
+            int offset = editor.getCaretModel().getOffset();
+            List<MavenDomDependency> dependencyList = dependencies.getDependencies();
+
+            for (int i = 0; i < dependencyList.size(); ++i) {
+                MavenDomDependency dependency = dependencyList.get(i);
+                XmlElement xmlElement = dependency.getXmlElement();
+                if (xmlElement != null) {
+                    int startOffset = xmlElement.getTextRange().getStartOffset();
+                    int endOffset = xmlElement.getTextRange().getEndOffset();
+                    if (offset >= startOffset && offset <= endOffset) {
+                        return i;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
+        project = e.getProject();
         if (dependencySearcher == null) {
             dependencySearcher = DependencySearcherManager.getFastest();
         }
@@ -97,23 +175,22 @@ public class MavenDependencyHelperAction extends AnAction {
         this.version = "";
         this.scope = "";
 
-        // 获取选中文本匹配的依赖
-        Editor editor = e.getData(LangDataKeys.EDITOR);
-        if (editor != null) {
-            CaretModel caretModel = editor.getCaretModel();
-            Caret currentCaret = caretModel.getCurrentCaret();
-            String selectedText = currentCaret.getSelectedText() != null ? currentCaret.getSelectedText().trim() : "";
-            if (selectedText.length() > 0) {
-                PsiFile psiFile = e.getData(CommonDataKeys.PSI_FILE);
-                String filePath = psiFile != null ? psiFile.getVirtualFile().getPath() : "";
-                List<Dependency> dependencies = getDependenciesByPom(filePath);
-                Optional<Dependency> matchDependencyOpt = dependencies.stream()
-                        .filter(item -> selectedText.equals(item.getArtifactId()))
-                        .findFirst();
-                if (matchDependencyOpt.isPresent()) {
-                    Dependency dependency = matchDependencyOpt.get();
-                    this.groupId = dependency.getGroupId() == null ? "" : dependency.getGroupId();
-                    this.artifactId = dependency.getArtifactId() == null ? "" : dependency.getArtifactId();
+        if (MavenActionUtil.isMavenizedProject(e.getDataContext())) {
+            mavenProject = MavenActionUtil.getMavenProject(e.getDataContext());
+            List<MavenArtifactNode> dependencyTree = mavenProject.getDependencyTree();
+            if (dependencyTree.size() > 0) {
+                DomFileElement domFileElement = getDomFileElement(dependencyTree.get(0));
+                MavenDomProjectModel rootElement = (MavenDomProjectModel) domFileElement.getRootElement();
+
+                MavenDomDependencies domDependencies = rootElement.getDependencies();
+                int dependencyIndex = getCollectionIndex(domDependencies, e.getData(CommonDataKeys.EDITOR));
+                Editor editor = e.getData(LangDataKeys.EDITOR);
+                if (editor != null) {
+                    if (dependencyIndex >= 0) {
+                        MavenArtifactNode mavenArtifactNode = dependencyTree.get(dependencyIndex);
+                        this.groupId = mavenArtifactNode.getArtifact().getGroupId();
+                        this.artifactId = mavenArtifactNode.getArtifact().getArtifactId();
+                    }
                 }
             }
         }
