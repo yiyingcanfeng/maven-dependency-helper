@@ -2,8 +2,10 @@ package searcher;
 
 import actions.AppSettingsState;
 import actions.MavenDependencyHelperAction;
-import actions.MyInvocationHandler;
-import com.intellij.notification.*;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationDisplayType;
+import com.intellij.notification.NotificationGroup;
+import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.project.Project;
 import org.jsoup.Jsoup;
@@ -13,9 +15,11 @@ import searcher.impl.SearchMavenOrgDependencySearcher;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -43,7 +47,7 @@ public class DependencySearcherManager {
 
     static {
         String fullVersion = ApplicationInfo.getInstance().getFullVersion();
-        // 'NotificationGroup(java.lang.String, com.intellij.notification.NotificationDisplayType, boolean)' is deprecated is deprecated after 2020.2.4
+        // 'NotificationGroup(java.lang.String, com.intellij.notification.NotificationDisplayType, boolean)' is deprecated after 2020.2.4
         if (Integer.parseInt(fullVersion.replace(".", "")) <= 202024) {
             try {
                 Class<?> aClass = Class.forName("com.intellij.notification.NotificationGroup");
@@ -56,17 +60,11 @@ public class DependencySearcherManager {
             //NOTIFICATION_GROUP = new NotificationGroup("MavenDependencyHelper", NotificationDisplayType.NONE, true);
         } else {
             try {
-                Class<?> aClass = Class.forName("com.intellij.notification.NotificationGroupManager");
-                Class<?> aClass1 = Class.forName("com.intellij.notification.impl.NotificationGroupManagerImpl");
-                Object o = aClass1.getDeclaredConstructor().newInstance();
-                Object instance = Proxy.newProxyInstance(
-                        aClass.getClassLoader(),
-                        new Class[]{aClass},
-                        new MyInvocationHandler(o)
-                );
-                Object invoke = aClass.getMethod("getInstance").invoke(instance);
-                NOTIFICATION_GROUP = (NotificationGroup) invoke.getClass().getMethod("getNotificationGroup", String.class).invoke(o, "MavenDependencyHelper");
-            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+                Class<?> notificationGroupManagerClass = Class.forName("com.intellij.notification.NotificationGroupManager");
+                Object notificationGroupManager = notificationGroupManagerClass.getMethod("getInstance").invoke(null);
+
+                NOTIFICATION_GROUP = (NotificationGroup) notificationGroupManagerClass.getMethod("getNotificationGroup", String.class).invoke(notificationGroupManager, "MavenDependencyHelper");
+            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
             }
             //NOTIFICATION_GROUP = NotificationGroupManager.getInstance().getNotificationGroup("MavenDependencyHelper");
@@ -95,7 +93,7 @@ public class DependencySearcherManager {
             stringBuilder.append("\n");
         }
         stringBuilder.append("detect speed interval: ").append(speedTestInterval).append("s\n");
-        stringBuilder.append("next detect time: ").append(new SimpleDateFormat("HH:mm").format(new Date(System.currentTimeMillis() + speedTestInterval * 1000)));
+        stringBuilder.append("next detect time: ").append(new SimpleDateFormat("HH:mm").format(new Date(System.currentTimeMillis() + speedTestInterval * 1000L)));
         notify(stringBuilder.toString());
     }
 

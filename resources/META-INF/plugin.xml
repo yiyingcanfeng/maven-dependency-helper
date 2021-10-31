@@ -1,7 +1,7 @@
 <idea-plugin url="https://github.com/yiyingcanfeng/maven-dependency-helper">
     <id>com.yiycf.plugins.mavenDependencyHelper</id>
     <name>Maven Dependency Helper</name>
-    <version>2.1</version>
+    <version>2.2</version>
     <vendor email="yiyingcanfeng@qq.com">yiyingcanfeng</vendor>
 
     <description><![CDATA[
@@ -32,6 +32,10 @@
     </description>
     <change-notes><![CDATA[
         <ul>
+            <li>
+                <p>2.2</p>
+                Compatibility fix for 2021.2
+            </li>
             <li>
                 <p>2.1</p>
                 Replace deprecated api.
