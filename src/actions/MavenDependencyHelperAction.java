@@ -1,10 +1,14 @@
 package actions;
 
+import com.intellij.buildsystem.model.unified.UnifiedDependency;
+import com.intellij.externalSystem.DependencyModifierService;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.LangDataKeys;
+import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -20,6 +24,7 @@ import com.intellij.util.xml.DomFileElement;
 import com.intellij.util.xml.DomManager;
 import model.Artifact;
 import model.Dependency;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
@@ -52,6 +57,7 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.*;
@@ -66,6 +72,7 @@ public class MavenDependencyHelperAction extends AnAction {
     private JButton copyVersionButton;
     private JButton copyTextAeraButton;
     private JButton searchButton;
+    private JButton addToPomButton;
     private JComboBox<String> comboBox;
     private JComboBox<String> typeComboBox;
     private JComboBox<String> sourceComboBox;
@@ -82,6 +89,8 @@ public class MavenDependencyHelperAction extends AnAction {
     private String version;
     private String scope;
 
+    private static boolean addPomBtnShow;
+
     public static ThreadFactory threadFactory = Executors.defaultThreadFactory();
     public static ScheduledThreadPoolExecutor scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(5, threadFactory);
     ;
@@ -93,6 +102,10 @@ public class MavenDependencyHelperAction extends AnAction {
     private static LinkedList<String> sourceTextList = new LinkedList<>();
 
     static {
+        DefaultArtifactVersion version202014 = new DefaultArtifactVersion("2020.1.4");
+        String fullVersion = ApplicationInfo.getInstance().getFullVersion();
+        DefaultArtifactVersion versionCurrent = new DefaultArtifactVersion(fullVersion);
+        addPomBtnShow = versionCurrent.compareTo(version202014) > 0;
         searcherTextMap.put(MvnRepositoryComDependencySearcher.class, "mvnrepository.com");
         searcherTextMap.put(SearchMavenOrgDependencySearcher.class, "search.maven.org");
         searcherTextMap.put(AliyunMavenDependencySearcher.class, "maven.aliyun.com");
@@ -122,6 +135,7 @@ public class MavenDependencyHelperAction extends AnAction {
 
     private MavenProject mavenProject;
     private Project project;
+    private Module module;
 
     protected DomFileElement getDomFileElement(MavenArtifactNode mavenArtifactNode) {
         XmlFile xmlFile = getXmlFile(mavenArtifactNode);
@@ -181,7 +195,7 @@ public class MavenDependencyHelperAction extends AnAction {
             if (dependencyTree.size() > 0) {
                 DomFileElement domFileElement = getDomFileElement(dependencyTree.get(0));
                 MavenDomProjectModel rootElement = (MavenDomProjectModel) domFileElement.getRootElement();
-
+                module = rootElement.getModule();
                 MavenDomDependencies domDependencies = rootElement.getDependencies();
                 int dependencyIndex = getCollectionIndex(domDependencies, e.getData(CommonDataKeys.EDITOR));
                 Editor editor = e.getData(LangDataKeys.EDITOR);
@@ -209,7 +223,7 @@ public class MavenDependencyHelperAction extends AnAction {
     private void initView() {
         frame = new JFrame("Maven Dependency Helper");
         frame.setSize(520, 280);
-        frame.setResizable(false);
+        frame.setResizable(true);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
@@ -232,6 +246,9 @@ public class MavenDependencyHelperAction extends AnAction {
 
         searchButton = new JButton("Search");
         searchButton.setFont(new Font(null, Font.PLAIN, 15));
+
+        addToPomButton = new JButton("AddToPom");
+        addToPomButton.setFont(new Font(null, Font.PLAIN, 15));
 
         comboBox = new ComboBox<>();
         comboBox.setFont(new Font(null, Font.PLAIN, 15));
@@ -306,6 +323,12 @@ public class MavenDependencyHelperAction extends AnAction {
         sourceComboBox.addItemListener(this::sourceComboBoxItemSelectEvent);
         copyTextAeraButton.addMouseListener(this.copyTextAreaButtonMouseListener);
         copyVersionButton.addMouseListener(versionCopyButtonMouseListener);
+        addToPomButton.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                addDependencyToPom();
+            }
+        });
     }
 
     /**
@@ -322,7 +345,10 @@ public class MavenDependencyHelperAction extends AnAction {
         scrollPane.setBounds(170, 108, 330, 122);
         tipsTextComponent.setBounds(170, 222, 330, 28);
         sourceLabel.setBounds(170, 77, 60, 28);
-        sourceComboBox.setBounds(240, 77, 180, 28);
+        sourceComboBox.setBounds(addPomBtnShow ? 220 : 240, 77, 180, 28);
+        if (addPomBtnShow) {
+            addToPomButton.setBounds(400, 77, 100, 28);
+        }
     }
 
     /**
@@ -341,6 +367,9 @@ public class MavenDependencyHelperAction extends AnAction {
         frame.getContentPane().add(tipsTextComponent);
         frame.getContentPane().add(sourceLabel);
         frame.getContentPane().add(sourceComboBox);
+        if (addPomBtnShow) {
+            frame.getContentPane().add(addToPomButton);
+        }
         frame.setVisible(true);
     }
 
@@ -642,6 +671,24 @@ public class MavenDependencyHelperAction extends AnAction {
                     "    <artifactId>" + artifactId + "</artifactId>\n" +
                     "    <version>" + version + "</version>\n" +
                     "</dependency>";
+        }
+    }
+
+    private void addDependencyToPom() {
+        String text = textArea.getText();
+        if (text == null || text.length() == 0) return;
+        Dependency dependency = new Dependency(groupId, artifactId, version, !"".equals(scope) ? scope : null);
+        if (addPomBtnShow) {
+            try {
+                Object o = Class.forName("com.intellij.externalSystem.DependencyModifierService")
+                        .getMethod("getInstance", Project.class).invoke(null, project);
+                Object o1 = Class.forName("com.intellij.buildsystem.model.unified.UnifiedDependency")
+                        .getConstructor(String.class, String.class, String.class, String.class)
+                        .newInstance(dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion(), dependency.getScope());
+                Class.forName("com.intellij.externalSystem.DependencyModifierService").getDeclaredMethod("addDependency", Module.class, o1.getClass()).invoke(o, module, o1);
+            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException | ClassNotFoundException | InstantiationException ex) {
+                ex.printStackTrace();
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import com.intellij.util.xmlb.XmlSerializerUtil;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,9 +24,10 @@ public class AppSettingsState implements PersistentStateComponent<AppSettingsSta
 
     public static AppSettingsState getInstance() {
         // ServiceManager.getService(Class) is deprecated after 2021.2.1
-        String fullVersion = ApplicationInfo.getInstance().getFullVersion();
+        DefaultArtifactVersion version20113 = new DefaultArtifactVersion("2021.1.3");
+        DefaultArtifactVersion versionCurrent = new DefaultArtifactVersion(ApplicationInfo.getInstance().getFullVersion());
         AppSettingsState service = null;
-        if (Integer.parseInt(fullVersion.replace(".", "")) <= 202113) {
+        if (versionCurrent.compareTo(version20113) <= 0) {
             try {
                 service = (AppSettingsState) Class.forName("com.intellij.openapi.components.ServiceManager")
                         .getMethod("getService", Class.class)

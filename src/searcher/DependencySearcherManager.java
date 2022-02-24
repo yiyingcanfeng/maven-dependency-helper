@@ -8,10 +8,12 @@ import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.project.Project;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.jsoup.Jsoup;
 import searcher.impl.AliyunMavenDependencySearcher;
 import searcher.impl.MvnRepositoryComDependencySearcher;
 import searcher.impl.SearchMavenOrgDependencySearcher;
+import util.OkHttpUtils;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -48,7 +50,9 @@ public class DependencySearcherManager {
     static {
         String fullVersion = ApplicationInfo.getInstance().getFullVersion();
         // 'NotificationGroup(java.lang.String, com.intellij.notification.NotificationDisplayType, boolean)' is deprecated after 2020.2.4
-        if (Integer.parseInt(fullVersion.replace(".", "")) <= 202024) {
+        DefaultArtifactVersion version202024 = new DefaultArtifactVersion("2020.2.4");
+        DefaultArtifactVersion versionCurrent = new DefaultArtifactVersion(ApplicationInfo.getInstance().getFullVersion());
+        if (versionCurrent.compareTo(version202024) <= 0) {
             try {
                 Class<?> aClass = Class.forName("com.intellij.notification.NotificationGroup");
                 NOTIFICATION_GROUP  = (NotificationGroup) aClass.getDeclaredConstructor(
@@ -114,15 +118,12 @@ public class DependencySearcherManager {
     public static void websiteSpeedTest() {
         for (DependencySearcher value : pool.values()) {
             threadPool.execute(() -> {
-                try {
-                    long start = System.currentTimeMillis();
-                    Jsoup.connect(value.getDetectSpeedUrl()).timeout(TIMEOUT).ignoreContentType(true).execute();
-                    long end = System.currentTimeMillis();
-                    value.setSpeed((int) (end - start));
-                } catch (IOException e) {
-                    value.setSpeed(TIMEOUT);
-                    e.printStackTrace();
-                }
+                long start = System.currentTimeMillis();
+                String detectSpeedUrl = value.getDetectSpeedUrl();
+                OkHttpUtils.get(detectSpeedUrl);
+                //Jsoup.connect(detectSpeedUrl).timeout(TIMEOUT).ignoreContentType(true).execute();
+                long end = System.currentTimeMillis();
+                value.setSpeed((int) (end - start));
             });
         }
     }

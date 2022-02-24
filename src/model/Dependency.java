@@ -6,6 +6,16 @@ public class Dependency {
     private String version;
     private String scope;
 
+    public Dependency() {
+    }
+
+    public Dependency(String groupId, String artifactId, String version, String scope) {
+        this.groupId = groupId;
+        this.artifactId = artifactId;
+        this.version = version;
+        this.scope = scope;
+    }
+
     @Override
     public String toString() {
         return "Dependency{" +
