@@ -1,7 +1,7 @@
 <idea-plugin url="https://github.com/yiyingcanfeng/maven-dependency-helper">
     <id>com.yiycf.plugins.mavenDependencyHelper</id>
     <name>Maven Dependency Helper</name>
-    <version>2.4</version>
+    <version>2.5</version>
     <vendor email="yiyingcanfeng@qq.com">yiyingcanfeng</vendor>
 
     <description><![CDATA[
@@ -33,6 +33,10 @@
     </description>
     <change-notes><![CDATA[
         <ul>
+            <li>
+                <p>2.5</p>
+                <p>Fix some bugs.</p>
+            </li>
             <li>
                 <p>2.4</p>
                 <p>Support add dependency text to pom.xml(available after 2020.3.4)</p>
@@ -103,5 +107,4 @@
 
     </actions>
     <depends>org.jetbrains.idea.maven</depends>
-    <depends>com.intellij.externalSystem.dependencyUpdater</depends>
 </idea-plugin>

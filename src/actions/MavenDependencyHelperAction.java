@@ -1,7 +1,5 @@
 package actions;
 
-import com.intellij.buildsystem.model.unified.UnifiedDependency;
-import com.intellij.externalSystem.DependencyModifierService;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
